@@ -1,9 +1,8 @@
 import cv2 as cv
 from ultralytics import YOLO
 
-webcam = cv.VideoCapture(0)
-
 model = YOLO('runs/detect/train/weights/best.pt')
+webcam = cv.VideoCapture(0)
 
 while True:
     ret, frame = webcam.read()
@@ -11,11 +10,14 @@ while True:
         print("Failed to grab frame")
         break
 
-    results = model.predict(frame)
+    results = model(frame, conf = 0.5)
 
-    cv.imshow("result", results)
+    for result in results:
+        annotated_frame = result.plot()
+        # cv.imshow("YOLOv9 Detection", frame)
+        cv.imshow("YOLOv9 Detection", annotated_frame)
 
-    if cv.waitKey(1) & 0xFF == ord('q'):
+    if cv.waitKey(50) & 0xFF == ord('q'):
         break
 
 webcam.release()
