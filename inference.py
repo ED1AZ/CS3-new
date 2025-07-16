@@ -2,7 +2,7 @@ from ultralytics import YOLO
 
 model = YOLO('runs/detect/train/weights/best.pt')
 
-results = model.predict('image1.jpg')
+results = model.predict('image3.jpg')
 
 for result in results:
     boxes = result.boxes # Bounding boxes
