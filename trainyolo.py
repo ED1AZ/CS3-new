@@ -10,7 +10,7 @@ if __name__ == '__main__':
     amp = False
     results = model.train(
         data='PlastOPol-1/data.yaml', 
-        epochs=30, 
+        epochs=100, 
         imgsz=640, 
         batch=-1
         )
