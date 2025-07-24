@@ -1,7 +1,7 @@
 import cv2 as cv
 from ultralytics import YOLO
 
-model = YOLO('runs/detect/train7/weights/best.pt')
+model = YOLO('runs/detect/train4/weights/best.pt')
 webcam = cv.VideoCapture(0)
 
 while True:
@@ -14,7 +14,7 @@ while True:
 
     for result in results:
         annotated_frame = result.plot()
-        # cv.imshow("YOLOv9 Detection", frame)
+        cv.imshow("YOLOv9 Detection", frame)
         cv.imshow("YOLOv9 Detection", annotated_frame)
 
     if cv.waitKey(50) & 0xFF == ord('q'):
