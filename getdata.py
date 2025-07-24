@@ -3,7 +3,7 @@ import roboflow
 # import yaml
 # import subprocess
 # from pathlib import Path
-# from ultralytics import YOLO
+from ultralytics import YOLO
 
 roboflow.login()
 
