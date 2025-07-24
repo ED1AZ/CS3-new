@@ -49,6 +49,7 @@ class VideoObject:
 def bgsubtract(frame, bgsub): 
     blurred = cv.GaussianBlur(frame, (5, 5), 0)
 
+    # original = 0.01
     fgmask = bgsub.apply(blurred, learningRate=0.01)
     background_model = bgsub.getBackgroundImage()
 
@@ -114,15 +115,21 @@ def defineObjects(contours):
 
     return object_list
 
+def getBackgroundModel(cam, bgsub):
+    ret, frame = cam.read()
+    fg, initial = bgsubtract(frame, bgsub)
+    initial = preprocessing(initial)
 
-cam = cv.VideoCapture("frames/stationary.MOV")
+    return initial
+
+
+cam = cv.VideoCapture(0)
 #tracker = cv.TrackerCSRT_create()
 
 
 bgsub = cv.createBackgroundSubtractorMOG2(history=20, varThreshold=50, detectShadows=True)
-ret, frame = cam.read()
-fg, initial = bgsubtract(frame, bgsub)
-initial = preprocessing(initial)
+
+initial = getBackgroundModel(cam, bgsub)
 
 """
 feature_params = dict( maxCorners = 100,
@@ -157,6 +164,9 @@ while cam.isOpened():
         i.showBoundary(frame)
         print(f"Object #{num}")
         num +=1
+        print(i.area)
+        print(frame.shape)
+
 
     """
     # calculate optical flow
@@ -197,44 +207,7 @@ while cam.isOpened():
         
     old_gray = frame_gray.copy()
     #p0 = good_new.reshape(-1, 1, 2)
-"""
-cv.imshow("intial", initial)
-cv.waitKey(0)
 
-#initial = cv.cvtColor(initial, cv.COLOR_BGR2GRAY)
-
-diff = areasOfInterest(initial, frame)
-gray = cv.cvtColor(diff, cv.COLOR_BGR2GRAY)
-gray = cv.GaussianBlur(gray, (5, 5), 0)
-thresh = cv.threshold(gray, 40, 255, cv.THRESH_BINARY)[1]
-contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-rois = []
-
-for cnt in contours:
-    if cv.contourArea(cnt) > 300:
-        # filter out biggest contours
-        continue
-    elif cv.contourArea(cnt) < 50:
-        continue
-    else: 
-        x, y, w, h = cv.boundingRect(cnt)
-
-        padding = 50  
-        x_new = max(x - padding, 0)
-        y_new = max(y - padding, 0)
-        x_end = min(x + w + padding, frame.shape[1])
-        y_end = min(y + h + padding, frame.shape[0])
-
-        roi = frame[y_new:y_end, x_new:x_end] 
-        rois.append(roi)
-        # Draw the ROI on the image for visualization (optional)
-        #cv.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-
-filename = "frames/roi"
-for i, r in enumerate(rois):
-    cv.imwrite(filename + str(i) + ".png", r)
-    print("Saved ROI in " + filename + str(i) + ".png")
-"""
 #areasOfInterest(initial, frame)
 
 cv.imshow("diff", frame)
