@@ -14,7 +14,7 @@ while True:
 
     for result in results:
         annotated_frame = result.plot()
-        # cv.imshow("YOLOv9 Detection", frame)
+        cv.imshow("YOLOv9 Detection", frame)
         cv.imshow("YOLOv9 Detection", annotated_frame)
 
     if cv.waitKey(50) & 0xFF == ord('q'):
