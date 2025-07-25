@@ -1,7 +1,7 @@
 import cv2 as cv
 from preprocessing import preprocessing
 import numpy as np
-
+orb = cv.ORB.create()
 # VideoEvent : potential litter event or nah?
 class VideoEvent:
     potentialLitter = False
@@ -22,6 +22,7 @@ class VideoObject:
     area = 0
     cnt = None
     features = []
+    roi = None
 
     def __init__(self, area, cnt):
         self.area = area
@@ -31,11 +32,13 @@ class VideoObject:
     def showBoundary(self, frame):
         x, y, w, h = cv.boundingRect(self.cnt)
         cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        roi = frame[y: y+h, x:x+w]
         cv.putText(frame, "Moving object", (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-    def extractFeatures(orb, grayframe):
-        kp, des = orb.detectAndCompute(grayframe, None)
-        img_keypoints = cv.drawKeypoints(grayframe, kp, None, flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    def extractFeatures(self, orb):
+        grayroi = cv.cvtColor(self.roi, cv.COLOR_BGR2GRAY)
+        kp, des = orb.detectAndCompute(grayroi, None)
+        img_keypoints = cv.drawKeypoints(grayroi, kp, None, flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
         cv.imshow("img", img_keypoints)
         cv.waitKey(0)
 
@@ -62,7 +65,7 @@ def bgsubtract(frame, bgsub):
 
     return fgmask, background_model
 
-def areasOfInterest(background, last_frame):
+def areasOfInterest(background, last_frame, round):
     # subtract background & last_frame
     diff = cv.absdiff(background, last_frame)
 
@@ -73,15 +76,17 @@ def areasOfInterest(background, last_frame):
 
     contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
     rois = []
-
+    
     for cnt in contours:
-        if cv.contourArea(cnt) > 300 or cv.contourArea(cnt) < 50:
+        area = cv.contourArea(cnt)
+        if area > 300 or area < 50:
             # filter out big & small noise
+            round += 1
             continue
         else: 
             x, y, w, h = cv.boundingRect(cnt)
-
-            padding = 50  
+            print("Padding:" + str(area))
+            padding = int(area//3)
             x_new = max(x - padding, 0)
             y_new = max(y - padding, 0)
             x_end = min(x + w + padding, frame.shape[1])
@@ -93,12 +98,12 @@ def areasOfInterest(background, last_frame):
     # save rois into folder
     filename = "rois/roi"
     for i, r in enumerate(rois):
-        cv.imwrite(filename + str(i) + ".png", r)
-        print("Saved ROI in " + filename + str(i) + ".png")
+        cv.imwrite(filename + str(i+round) + ".png", r)
+        print("Saved ROI in " + filename + str(i+round) + ".png")
 
 def findObjects(fgmask, frame_gray):
     contours, __ = cv.findContours(fgmask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-    cv.drawContours(frame_gray, contours, -1, (0,255,0), 3)
+    #cv.drawContours(frame_gray, contours, -1, (0,255,0), 3)
     return contours
 
 def defineObjects(contours):
@@ -109,21 +114,20 @@ def defineObjects(contours):
     for cnt in contours:
         area = cv.contourArea(cnt)
         if area > 500:  # Filter small noise
-            # where boundingRect -> putText used to be
             moving_object = VideoObject(area, cnt)
             object_list.append(moving_object)
-
+    
     return object_list
 
 def getBackgroundModel(cam, bgsub):
     ret, frame = cam.read()
-    fg, initial = bgsubtract(frame, bgsub)
+    __, initial = bgsubtract(frame, bgsub)
     initial = preprocessing(initial)
 
     return initial
 
 
-cam = cv.VideoCapture(0)
+cam = cv.VideoCapture("frames/twotrash.MOV")
 #tracker = cv.TrackerCSRT_create()
 
 
@@ -148,6 +152,7 @@ old_frame = preprocessing(old_frame)
 #p0 = cv.goodFeaturesToTrack(old_gray, mask = None, **feature_params)
 # Create a mask image for drawing purposes
 #mask = np.zeros_like(old_frame)
+round = 0
 while cam.isOpened():
     ret, frame = cam.read()
     if not ret:
@@ -158,16 +163,26 @@ while cam.isOpened():
     fgmask, background = bgsubtract(frame, bgsub)
     contours = findObjects(fgmask, frame_gray)
 
-    object_list = defineObjects(contours)
-    num = 1
-    for i in object_list:
-        i.showBoundary(frame)
-        print(f"Object #{num}")
-        num +=1
-        print(i.area)
-        print(frame.shape)
+    if not contours:
+        # contours = empty list --> no objects present
+        print("No objects")
+        # update background model if no objects
+        areasOfInterest(initial, frame, round)
+        initial = getBackgroundModel(cam, bgsub)
 
+    else: 
+        # for later, extract object features for occlusion/stationary cases
+        object_list = defineObjects(contours)
+        num = 1
+        
+        for i in object_list:
+            i.showBoundary(frame)
+            print(f"Object #{num}")
+            num +=1
+            print(i.area)
+            print(frame.shape)
 
+    
     """
     # calculate optical flow
     p1, st, err = cv.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
@@ -208,8 +223,7 @@ while cam.isOpened():
     old_gray = frame_gray.copy()
     #p0 = good_new.reshape(-1, 1, 2)
 
-#areasOfInterest(initial, frame)
+areasOfInterest(initial, frame, round)
 
-cv.imshow("diff", frame)
 cv.waitKey(0)
 cam.release()
