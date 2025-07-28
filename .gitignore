@@ -211,3 +211,6 @@ yolov9_dataset/
 
 # data
 PlastOPol-1/
+
+# marked_map
+homography/maps/marked_map.jpg

@@ -37,4 +37,4 @@ while cam.isOpened():
 
 cam.release()
 cv.destroyAllWindows()
-cv.imwrite("./maps/marked_map.jpg", map)
+cv.imwrite("homography/maps/marked_map.jpg", map)
