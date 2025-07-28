@@ -1,5 +1,5 @@
 import cv2 as cv
-import homography as hg
+import homography.hg as hg
 
 map = cv.imread('maps/map1.jpg')
 cam = cv.VideoCapture("./videos/IMG_1086.mov")
