@@ -4,7 +4,7 @@ import numpy as np
 cam = cv.VideoCapture("./videos/IMG_1086.mov")
 
 def save_image(frame):
-    filename = "images/image.jpg"
+    filename = "./images/image.jpg"
     cv.imwrite(filename, frame)
 
 while cam.isOpened():

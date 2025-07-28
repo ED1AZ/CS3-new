@@ -1,8 +1,8 @@
 import cv2 as cv
-import homography.hg as hg
+import hg as hg
 
-map = cv.imread('maps/map1.jpg')
-cam = cv.VideoCapture("./videos/IMG_1086.mov")
+map = cv.imread('homography/maps/map1.jpg')
+cam = cv.VideoCapture("homography/videos/IMG_1086.mov")
 
 def mouse_callback(event, x, y, flags, param):
     if event == cv.EVENT_LBUTTONDOWN:
@@ -37,4 +37,4 @@ while cam.isOpened():
 
 cam.release()
 cv.destroyAllWindows()
-cv.imwrite("maps/marked_map.jpg", map)
+cv.imwrite("./maps/marked_map.jpg", map)
