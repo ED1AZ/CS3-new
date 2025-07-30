@@ -159,12 +159,24 @@ def rotate_mapview():
     messagebox.showinfo("Success", "Map rotated successfully.")
     # Image.open(markedmap).show()  # Display the rotated map
 
+def get_image():
+    file_path = filedialog.askopenfilename(title="Select a camera view image", filetypes=[("Image files", "*.jpg;*.jpeg;*.png")])
+    if not file_path:
+        messagebox.showerror("Error", "No file selected.")
+        return None
+    
+    cv.imwrite(image, cv.imread(file_path))
+    messagebox.showinfo("Success", "Camera View uploaded successfully.")
+
 # buttons
 upload_button = tk.Button(root, text="Upload Map", command=get_map)
 upload_button.grid(row=0, column=0, padx=10, pady=10)
 
+upload_camview = tk.Button(root, text="Upload Camera View", command=get_image)
+upload_camview.grid(row=1, column=0, padx=10, pady=10)
+
 camera_button = tk.Button(root, text="Upload Camera", command=new_camera)
-camera_button.grid(row=1, column=0, padx=10, pady=10)
+camera_button.grid(row=2, column=0, padx=10, pady=10)
 
 open_button = tk.Button(root, text="Open Camera", command=open_camera)  # Open default camera
 
