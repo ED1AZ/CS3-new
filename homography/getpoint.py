@@ -1,7 +1,7 @@
 import cv2 as cv
 import hg as hg
 
-map = cv.imread('homography/maps/map1.jpg')
+map = cv.imread('homography/maps/map.jpg')
 cam = cv.VideoCapture("homography/videos/IMG_1086.mov")
 
 def mouse_callback(event, x, y, flags, param):
