@@ -2,20 +2,6 @@ import cv2 as cv
 from preprocessing import preprocessing
 import numpy as np
 orb = cv.ORB.create()
-# VideoEvent : potential litter event or nah?
-class VideoEvent:
-    potentialLitter = False
-    objectPresent = False
-
-    def __init__(self, objectPresent, potentialLitter):
-        self.objectPresent = objectPresent
-        self.potentialLitter = potentialLitter
-
-    def objectPresence(scene):
-        print()
-    def litterPresence():
-        print()
-
 # VideoObject : has features & motion, wil be tracked as it moves along the screen
 # Background Model & FGmask
 class VideoObject:
@@ -42,11 +28,10 @@ class VideoObject:
         cv.imshow("img", img_keypoints)
         cv.waitKey(0)
 
-    def matchFeatures(prev, next):
-        print()
-
-    def defineMotion():
-        print()
+def findObjects(fgmask):
+    contours, __ = cv.findContours(fgmask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    #cv.drawContours(frame_gray, contours, -1, (0,255,0), 3)
+    return contours
 
 
 def bgsubtract(frame, bgsub): 
@@ -54,6 +39,7 @@ def bgsubtract(frame, bgsub):
 
     # original = 0.01
     fgmask = bgsub.apply(blurred, learningRate=0.01)
+
     background_model = bgsub.getBackgroundImage()
 
     # make kernel bigger for less noise
@@ -65,46 +51,84 @@ def bgsubtract(frame, bgsub):
 
     return fgmask, background_model
 
-def areasOfInterest(background, last_frame, round):
-    # subtract background & last_frame
-    diff = cv.absdiff(background, last_frame)
 
-    # filter out noise & make binary img
-    gray = cv.cvtColor(diff, cv.COLOR_BGR2GRAY)
-    gray = cv.GaussianBlur(gray, (5, 5), 0)
-    thresh = cv.threshold(gray, 40, 255, cv.THRESH_BINARY)[1]
-
-    contours, _ = cv.findContours(thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-    rois = []
-    
-    for cnt in contours:
-        area = cv.contourArea(cnt)
-        if area > 300 or area < 50:
-            # filter out big & small noise
-            round += 1
-            continue
-        else: 
-            x, y, w, h = cv.boundingRect(cnt)
-            print("Padding:" + str(area))
-            padding = int(area//3)
-            x_new = max(x - padding, 0)
-            y_new = max(y - padding, 0)
-            x_end = min(x + w + padding, frame.shape[1])
-            y_end = min(y + h + padding, frame.shape[0])
-
-            roi = frame[y_new:y_end, x_new:x_end] 
-            rois.append(roi)
-
-    # save rois into folder
+def saveROI(rois, round):
     filename = "rois/roi"
+
     for i, r in enumerate(rois):
         cv.imwrite(filename + str(i+round) + ".png", r)
         print("Saved ROI in " + filename + str(i+round) + ".png")
 
-def findObjects(fgmask, frame_gray):
-    contours, __ = cv.findContours(fgmask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-    #cv.drawContours(frame_gray, contours, -1, (0,255,0), 3)
-    return contours
+
+def findBinaryDiff(background, last_frame): 
+    # subtract background & last_frame
+    diff = cv.absdiff(background, last_frame)
+    
+    # make binary img
+    gray = cv.cvtColor(diff, cv.COLOR_BGR2GRAY)
+    gray = cv.GaussianBlur(gray, (5, 5), 0)
+    thresh = cv.threshold(gray, 40, 255, cv.THRESH_BINARY)[1]
+
+    # erode noise
+    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5,5))
+    thresh = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=1)
+
+    return thresh 
+
+def eliminateDuplicates(rois):
+    if not rois:
+        print("No rois found.")
+        return
+    
+    # include eliminate duplicate function
+
+def isolateGround(background, last_frame):
+    height, width, __ = background.shape
+    ground = int(height/1.5)
+
+    # keep bottom part of image
+    background = background[ground:height, 0:width]
+    last_frame = last_frame[ground:height, 0:width]
+
+    return background, last_frame
+
+
+def areasOfInterest(background, last_frame, round):
+    background, last_frame = isolateGround(background, last_frame)
+    
+    binary_diff = findBinaryDiff(background, last_frame)
+    static_changes = findObjects(binary_diff)
+    rois = []
+     
+    for ch in static_changes:
+        area = cv.contourArea(ch)
+        if area > 6000 or area < 50:
+            # filter out big & small noise
+            print(f"{area}: Change too big or too small")
+            continue
+        else: 
+            x, y, w, h = cv.boundingRect(ch) # coordinates in original half-frame
+            padding = 50 #int(area//20)
+
+            # coordinates to crop
+            x_new = int(max(x - padding, 0))
+            y_new = int(max(y - padding, 0))
+            x_end = int(min(x + w + padding, last_frame.shape[1]))
+            y_end = int(min(y + h + padding, last_frame.shape[0]))
+
+            roi = last_frame[y_new:y_end, x_new:x_end] 
+
+            roi = cv.rectangle(roi, (x-x_new, y-y_new), (x-x_new + w, y-y_new + h), (0, 0, 255), 2)
+            
+            rois.append(roi)
+
+    if not rois:
+        print("No static changes in scene")
+    else: 
+        saveROI(rois, round)
+        round += 1
+
+    return diff
 
 def defineObjects(contours):
     object_list = []
@@ -113,7 +137,7 @@ def defineObjects(contours):
         print()
     for cnt in contours:
         area = cv.contourArea(cnt)
-        if area > 500:  # Filter small noise
+        if area > 500:  # Filter small noise (500 originally)
             moving_object = VideoObject(area, cnt)
             object_list.append(moving_object)
     
@@ -122,94 +146,70 @@ def defineObjects(contours):
 def getBackgroundModel(cam, bgsub):
     ret, frame = cam.read()
     __, initial = bgsubtract(frame, bgsub)
-    initial = preprocessing(initial)
+    #initial = preprocessing(initial)
 
     return initial
 
 
-cam = cv.VideoCapture("frames/twotrash.MOV")
-#tracker = cv.TrackerCSRT_create()
-
+cam = cv.VideoCapture("frames/occlusion1.mov")
 
 bgsub = cv.createBackgroundSubtractorMOG2(history=20, varThreshold=50, detectShadows=True)
+#bgsub = cv.createBackgroundSubtractorKNN(history=20, dist2Threshold=50, detectShadows=False)
 
 initial = getBackgroundModel(cam, bgsub)
 
-"""
-feature_params = dict( maxCorners = 100,
-                       qualityLevel = 0.3,
-                       minDistance = 7,
-                       blockSize = 7 )
-lk_params = dict( winSize  = (15, 15),
-                  maxLevel = 2,
-                  criteria = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 0.03))
-color = np.random.randint(0, 255, (100, 3))
-
-ret, old_frame = cam.read()
-old_frame = preprocessing(old_frame)
-"""
-#old_gray = cv.cvtColor(old_frame, cv.COLOR_BGR2GRAY)
-#p0 = cv.goodFeaturesToTrack(old_gray, mask = None, **feature_params)
-# Create a mask image for drawing purposes
-#mask = np.zeros_like(old_frame)
 round = 0
+current = 0
+avg = initial.copy()
+
 while cam.isOpened():
     ret, frame = cam.read()
     if not ret:
         print("Can't read frame")
-    frame = preprocessing(frame)
+    if frame is None:
+        break
+    else:
+        # video var is for viewing, frame is for processing
+        video = preprocessing(frame)
 
-    frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    fgmask, background = bgsubtract(frame, bgsub)
-    contours = findObjects(fgmask, frame_gray)
+    #frame = cv.convertScaleAbs(frame, alpha=1, beta=-20)
 
-    if not contours:
-        # contours = empty list --> no objects present
+    video_gray = cv.cvtColor(video, cv.COLOR_BGR2GRAY)
+    fgmask, ___ = bgsubtract(video, bgsub)
+
+    alpha = 0.2
+    beta = 1 - alpha
+    avg = cv.addWeighted(avg, alpha, frame, beta, 0.0)
+    
+    moving_contours = findObjects(fgmask)
+
+    if not moving_contours:
+        # moving_contours = empty list --> no objects present
         print("No objects")
+
         # update background model if no objects
-        areasOfInterest(initial, frame, round)
-        initial = getBackgroundModel(cam, bgsub)
+        diff = areasOfInterest(initial, avg, round)
+        
+        #initial = getBackgroundModel(cam, bgsub)
 
     else: 
         # for later, extract object features for occlusion/stationary cases
-        object_list = defineObjects(contours)
+        object_list = defineObjects(moving_contours)
         num = 1
         
         for i in object_list:
-            i.showBoundary(frame)
+            i.showBoundary(video)
             print(f"Object #{num}")
             num +=1
             print(i.area)
-            print(frame.shape)
 
-    
-    """
-    # calculate optical flow
-    p1, st, err = cv.calcOpticalFlowPyrLK(old_gray, frame_gray, p0, None, **lk_params)
- 
-    # Select good points
-    if p1 is not None:
-        good_new = p1[st==1]
-        good_old = p0[st==1]
-    
-    # draw the tracks
-    for i, (new, old) in enumerate(zip(good_new, good_old)):
-        a, b = new.ravel()
-        c, d = old.ravel()
-
-        if fgmask[int(b), int(a)] > 0:
-            mask = cv.line(mask, (int(a), int(b)), (int(c), int(d)), color[i].tolist(), 2)
-            frame = cv.circle(frame, (int(a), int(b)), 5, color[i].tolist(), -1)
-    img = cv.add(frame, mask)
-    
-    """
+    #prev_mask = fgmask.copy()
     
     #___, threshold = cv.threshold(frame, 250, 255, cv.THRESH_BINARY)
     #threshold = cv.adaptiveThreshold(frame_gray, 0, 255, cv.THRESH_BINARY, 21, 7)
     
-
+    #fgmask or video for viewing
     cv.imshow("video", fgmask)
-    
     if cv.waitKey(1) & 0xFF == ord('q'):
         break
     elif cv.waitKey(30)  == ord('s'):
@@ -220,10 +220,20 @@ while cam.isOpened():
     elif frame is None:
         break
         
-    old_gray = frame_gray.copy()
-    #p0 = good_new.reshape(-1, 1, 2)
 
-areasOfInterest(initial, frame, round)
+# open diff file eq
+gray = cv.cvtColor(diff, cv.COLOR_BGR2GRAY)
+gray = cv.GaussianBlur(gray, (5, 5), 0)
+thresh = cv.threshold(gray, 40, 255, cv.THRESH_BINARY)[1]
+kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5,5))
+# open = erodes noise & dilates foreground
+thresh = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=1)
 
+# close = fills in holes within foreground
+#thresh = cv.morphologyEx(thresh, cv.MORPH_CLOSE, kernel, iterations=2)
+cv.imshow("diff", thresh)
 cv.waitKey(0)
-cam.release()
+cv.imshow("avg", avg)
+cv.waitKey(0)
+
+cam.release() 
