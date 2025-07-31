@@ -3,8 +3,8 @@ import numpy as np
 
 def get_matrix():
     # Hardcoded points to form homography matrix with
-    video_points = np.array([[0, 0], [0, 0], [0, 0], [0, 0]]) # from camera perspective
-    topdown_points = np.array([[0, 0], [0, 0], [0, 0], [0, 0]]) # from top-down perspective
+    video_points = np.array([[243, 243], [761, 231], [234, 414], [560, 430]]) # from camera perspective
+    topdown_points = np.array([[68, 259], [76, 147], [168, 276], [175, 268]]) # from top-down perspective
     # Computing homography matrix
     H, _ = cv.findHomography(video_points, topdown_points, method=cv.RANSAC)
     return H
