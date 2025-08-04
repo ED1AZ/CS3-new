@@ -214,3 +214,6 @@ PlastOPol-1/
 
 # marked_map
 homography/maps/marked_map.jpg
+#video frames & rois
+bg-sub/frames 
+bg-sub/rois
