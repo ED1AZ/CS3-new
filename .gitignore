@@ -217,3 +217,6 @@ homography/maps/marked_map.jpg
 #video frames & rois
 bg-sub/frames 
 bg-sub/rois
+keys.env
+output/
+Litter-Detection-6/
