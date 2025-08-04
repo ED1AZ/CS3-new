@@ -1,6 +1,5 @@
 import roboflow as roboflow
 from dotenv import load_dotenv
-import supervision as sv
 import os
 
 load_dotenv(dotenv_path="keys.env",)
