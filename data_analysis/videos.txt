@@ -1,0 +1,13 @@
+video001=bench.MOV
+video002=bottle.MOV
+video003=no-person.MOV
+video004=occlusion1.mov 
+video005=Outside.mov
+video006=playing.mov
+video007=rolling.mov 
+video008=standing-still.mov
+video009=stationary.MOV 
+video010=table.mov
+video011=trashbag.mov
+video012=two-bystander.mov
+video013=twotrash.mov
