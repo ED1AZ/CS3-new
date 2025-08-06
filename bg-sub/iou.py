@@ -19,7 +19,7 @@ def iou(boxA, boxB):
     if unionArea == 0:
         return False
 
-    if interArea / unionArea > 0.3:
+    if interArea / unionArea > 0.2:
         return True
     else:
         return False
