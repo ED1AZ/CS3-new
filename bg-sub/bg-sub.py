@@ -3,6 +3,10 @@ from preprocessing import preprocessing
 import numpy as np
 import os
 from iou import iou
+import shutil
+from PIL import Image
+import imagehash
+
 
 # VideoObject : has features & motion, wil be tracked as it moves along the screen
 # Background Model & FGmask
@@ -96,6 +100,32 @@ def eliminateDuplicates(rois):
 
     return filtered
 
+def remove_dup(rois, hash_size=8, threshold=5):
+    def roi_to_hash(roi):
+        # Convert CV image to pillow
+        pil_image = Image.fromarray(cv.cvtColor(roi, cv.COLOR_BGR2RGB))
+        return imagehash.phash(pil_image)
+    
+    unique_hashes = set()
+    unique_rois = []
+    hash_threshold = 26
+
+    for roi_img in rois:
+        img_hash = roi_to_hash(roi_img)
+        is_duplicate = False
+        print("Duplicate check")
+
+        for h in unique_hashes:
+            if abs(img_hash - h) <= hash_threshold:
+                is_duplicate = True
+                print("duplicate found")
+                break
+                
+        if not is_duplicate:
+            unique_rois.append(roi_img)
+            unique_hashes.add(img_hash)
+    return unique_rois
+
 def isolateGround(background, last_frame):
     height, width, __ = background.shape
     ground = int(height/2)
@@ -136,13 +166,15 @@ def areasOfInterest(background, last_frame, roundnum):
             rois.append(roi)
             """
             points.append([x_new, y_new, x_end, y_end])
-
+    
     roi_points = eliminateDuplicates(points)
-
+    
     for group in roi_points:
         roi = last_frame[group[1]:group[3], group[0]:group[2]]
         #roi = cv.rectangle(roi, (x-x_new, y-y_new), (x-x_new + w, y-y_new + h), (0, 0, 255), 2)
         rois.append(roi)
+    
+    #rois = remove_dup(rois)
 
     if not rois:
         print("No static changes in scene")
@@ -175,19 +207,18 @@ def getBackgroundModel(cam, bgsub):
 # table.mov error bc bottle never detected?
 # two bystander.mov error bc WAY too many ROIS generated
 
-cam = cv.VideoCapture("frames/occlusion1.mov")
+cam = cv.VideoCapture("frames/013.mov")    
 
 bgsub = cv.createBackgroundSubtractorMOG2(history=20, varThreshold=50, detectShadows=True)
-#bgsub = cv.createBackgroundSubtractorKNN(history=20, dist2Threshold=50, detectShadows=False)
+# bgsub = cv.createBackgroundSubtractorKNN(history=20, dist2Threshold=50, detectShadows=False)
 
 initial = getBackgroundModel(cam, bgsub)
-
 roundnum = 0
 current = 0
 avg = initial.copy()
 
 if os.path.isdir("rois"):
-    os.rmdir("rois")
+    shutil.rmtree("rois")
 os.mkdir("rois")
 
 while cam.isOpened():
@@ -244,5 +275,9 @@ while cam.isOpened():
         current += 1
     elif frame is None:
         break
+
+cv.imwrite(filename="avg.jpg", img=avg)
+cv.imwrite(filename="diff.jpg", img=diff)
+cv.imwrite(filename="initialbg.jpg", img=initial)
 
 cam.release() 
