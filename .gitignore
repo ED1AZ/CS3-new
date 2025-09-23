@@ -222,3 +222,4 @@ output/
 Litter-Detection-6/
 parklitter_jpg
 parklitter
+weights.pt
