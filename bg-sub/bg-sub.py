@@ -55,7 +55,7 @@ def bgsubtract(frame, bgsub):
 
 
 def saveROI(rois, roundnum):
-    filename = "rois/roi"
+    filename = "bg-sub/rois/roi"
 
     for i, r in enumerate(rois):
         cv.imwrite(filename + str(i+roundnum) + ".png", r)
@@ -74,6 +74,8 @@ def findBinaryDiff(background, last_frame):
     # erode noise
     kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5,5))
     thresh = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=1)
+    cv.imwrite("noisy.jpg", thresh)
+    cv.imwrite("frame.jpg", last_frame)
 
     return thresh 
 
@@ -175,7 +177,7 @@ def getBackgroundModel(cam, bgsub):
 # table.mov error bc bottle never detected?
 # two bystander.mov error bc WAY too many ROIS generated
 
-cam = cv.VideoCapture("frames/occlusion1.mov")
+cam = cv.VideoCapture("bg-sub/frames/twotrash.MOV")
 
 bgsub = cv.createBackgroundSubtractorMOG2(history=20, varThreshold=50, detectShadows=True)
 #bgsub = cv.createBackgroundSubtractorKNN(history=20, dist2Threshold=50, detectShadows=False)
@@ -186,9 +188,9 @@ roundnum = 0
 current = 0
 avg = initial.copy()
 
-if os.path.isdir("rois"):
-    os.rmdir("rois")
-os.mkdir("rois")
+if os.path.isdir("bg-sub/rois"):
+    os.rmdir("bg-sub/rois")
+os.mkdir("bg-sub/rois")
 
 while cam.isOpened():
     ret, frame = cam.read()
