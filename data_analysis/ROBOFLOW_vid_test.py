@@ -7,22 +7,22 @@ import numpy as np
 import base64
 
 
-load_dotenv(dotenv_path="keys.env",)
+load_dotenv(dotenv_path="keys.env")
 api_key = os.getenv("ED1AZ_API_KEY")
 
 rf = roboflow.Roboflow(api_key=api_key)
 # change project & version name
-project = rf.workspace("ed1az").project("weights-pbmkl")
-model = project.version(1).model
+project = rf.workspace("ed1az").project("current-dataset-czyp8")
+model = project.version(2).model
 
 # may have to change video_path
 VIDEO = str(input("Enter video ID: "))
 VIDEO_PATH = '../bg-sub/frames/' + VIDEO + '.mov'
 #VIDEO_PATH = '../bg-sub/frames/001crop.mp4'
 output_folder = "detected"
-MODEL_TYPE = "RF-DETRs"
+MODEL_TYPE = "YOLOv11s"
 LitterNET = False
-litter_present = True
+litter_present = False
 frame_num = 0
 totalDetections = 0
 
