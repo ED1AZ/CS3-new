@@ -5,10 +5,11 @@ import csv
 import cv2 as cv
 import numpy as np
 import base64
+from PIL import Image
 
 
-load_dotenv(dotenv_path="keys.env")
-api_key = os.getenv("ED1AZ_API_KEY")
+#load_dotenv(dotenv_path="keys.env")
+api_key = "biVnTCggzj3GiRiSl5YD"#os.getenv("ED1AZ_API_KEY")
 
 rf = roboflow.Roboflow(api_key=api_key)
 # change project & version name
@@ -17,8 +18,8 @@ model = project.version(2).model
 
 # may have to change video_path
 VIDEO = str(input("Enter video ID: "))
-VIDEO_PATH = '../bg-sub/frames/' + VIDEO + '.mov'
-#VIDEO_PATH = '../bg-sub/frames/001crop.mp4'
+VIDEO_PATH = 'bg-sub/frames/' + VIDEO + '.MOV'
+#VIDEO_PATH = 'bg-sub/frames/001.mp4'
 output_folder = "detected"
 MODEL_TYPE = "YOLOv11s"
 LitterNET = False
@@ -32,11 +33,13 @@ while video.isOpened():
     if not ret:
         print("Failed to grab frame")
         break
-    if frame is None:
+    if frame is None or frame.size == 0:
         print("No frame")
         break
+    frame_pil = Image.fromarray(frame)
 
-    results = model.predict(frame, confidence=40, overlap=30).json()
+
+    results = model.predict(frame, confidence=0.5, overlap=0.3).json()
     #results = model(frame)[0]
 
     with open('results.csv', 'a', newline='') as csvfile:

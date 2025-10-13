@@ -207,7 +207,7 @@ def getBackgroundModel(cam, bgsub):
 # table.mov error bc bottle never detected?
 # two bystander.mov error bc WAY too many ROIS generated
 
-cam = cv.VideoCapture("frames/013.mov")    
+cam = cv.VideoCapture("bg-sub/frames/009.mov")    
 
 bgsub = cv.createBackgroundSubtractorMOG2(history=20, varThreshold=50, detectShadows=True)
 # bgsub = cv.createBackgroundSubtractorKNN(history=20, dist2Threshold=50, detectShadows=False)

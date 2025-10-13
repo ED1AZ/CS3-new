@@ -3,14 +3,21 @@ from ultralytics import YOLO
 import numpy as np
 import csv
 import os
+import roboflow as roboflow
 
-YOLO_V11S_PATH = '../runs/detect/train3/weights/best.pt'
-model = YOLO(YOLO_V11S_PATH)
+#OLO_V11S_PATH = '../runs/detect/train3/weights/best.pt'
+#model = YOLO(YOLO_V11S_PATH)
+api_key = "biVnTCggzj3GiRiSl5YD"#os.getenv("ED1AZ_API_KEY")
+
+rf = roboflow.Roboflow(api_key=api_key)
+# change project & version name
+project = rf.workspace("ed1az").project("current-dataset-czyp8")
+model = project.version(2).model
 
 VIDEO = str(input("Enter video ID: "))
 litter_present = True
-ROI_PATH = '../bg-sub/rois'
-MODEL_TYPE = "YOLOv9s"
+ROI_PATH = 'rois'
+MODEL_TYPE = "YOLOv11s"
 
 frame_num = 0
 totalDetections = 0
@@ -33,30 +40,28 @@ with open('litternet.csv', 'a', newline='') as csvfile:
                 print(f"Failed to load image: {roi_path}")
                 continue
 
-            results = model(image)
+            results = model.predict(image, confidence=0.5, overlap=0.3).json()
 
-            for object_id, box in enumerate(results[0].boxes):
-                class_id = int(box.cls[0])                         
-                conf = float(box.conf[0])                        
-                class_name = model.names[class_id]                    
+
+            for object_id, box in enumerate(results['predictions']):
+                class_name = box['class']
+                conf = box['confidence']
+
+                x, y, width, height = box['x'], box['y'], box['width'], box['height']
+                x1 = int(x - width / 2)
+                y1 = int(y - height / 2)
+                x2 = int(x + width / 2)
+                y2 = int(y + height / 2)                      
 
                 litter_detected = True
                 data = [VIDEO, MODEL_TYPE, LitterNET, frame_num, object_id, litter_present, litter_detected, conf]
                 writer.writerow(data)
                 totalDetections += 1
 
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
                 cv.rectangle(image, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
-                label = f"{class_name} {conf:.2f}"
-                cv.putText(image, label, (x1, y1 - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
                 filename = f"detected/frame{frame_num}_obj{object_id}_{class_name}_{conf:.2f}.jpg"
                 cv.imwrite(filename, image)
-            
-            if not results[0].boxes:
-                data = [VIDEO, MODEL_TYPE, LitterNET, frame_num, object_id, False, False, 0]
-                writer.writerow(data)
-            frame_num += 1
 
     # Handle case with no detections
     if totalDetections == 0:
