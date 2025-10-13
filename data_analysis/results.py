@@ -15,8 +15,8 @@ yolov11_withoutL_conf = 0.5653278226261347
 #RF-DETR     0.906489
 #YOLOv11s    0.863864     # WITH LITTERNET
 #YOLOv9s     0.891197
-values1 = [86, 89, 91] #with LitterNET
-values2 = [57, 44, 76] #without 
+values1 = [85, 89, 91] #with LitterNET
+values2 = [65, 44, 76] #without 
 
 
 x = np.arange(len(categories))  # the label locations
@@ -34,4 +34,4 @@ ax.set_xticks(x)
 ax.set_xticklabels(categories)
 ax.legend()
 
-plt.show()
+plt.savefig("plot.png")

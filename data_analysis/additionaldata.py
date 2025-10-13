@@ -7,7 +7,11 @@ df = L_df.groupby('litter_present')['conf'].mean()
 df2 = noL_df.groupby('litter_present')['conf'].mean()
 df3 = noL_df.groupby(['MODEL_TYPE', 'litter_present'])['conf'].mean()
 
+cool = pd.read_csv("results.csv")
+cooldf = cool.groupby('litter_present')['conf'].mean()
+tool = pd.read_csv("litternet.csv")
+tooldf = cool.groupby('litter_present')['conf'].mean()
 
-print(df) 
-print(df2) 
-print(df3)
+print(cooldf) 
+print(tooldf) 
+
