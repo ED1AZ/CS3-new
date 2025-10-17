@@ -3,6 +3,28 @@ import supervision as sv
 import cv2 as cv
 import os 
 from dotenv import load_dotenv
+from iou import iou
+
+FOLDER_PATH = "data_analysis/annotated_frames/test"
+W, H = 1920, 1080
+
+def rfboundingboxcalc(nums_in_line):
+    __, x_center_norm, y_center_norm, width_norm, height_norm = nums_in_line
+    x_center_pixel = x_center_norm * W
+    y_center_pixel = y_center_norm * H
+    width_pixel = width_norm * W
+    height_pixel = height_norm * H
+
+    #top left corner
+    x_min = x_center_pixel - width_pixel / 2
+    y_min = y_center_pixel - height_pixel / 2
+    x_max = x_center_pixel + width_pixel / 2
+    y_max = y_center_pixel + height_pixel / 2
+
+    print(x_min, y_min, x_max, y_max)
+
+    return(x_min, y_min, x_max, y_max)
+
 import pandas as pd
 
 csv_file = "data_analysis/litternet.csv" # csv path
@@ -37,6 +59,44 @@ rf = roboflow.Roboflow(api_key=api_key)
 model = rf.workspace("ed1az").project("current-dataset-czyp8").version(2).model
 
 img = cv.imread("data_analysis/annotated_frames/test/images/013_MOV-0008_jpg.rf.a241f21bedcfed362b3f6626471318dc.jpg")
+
+with os.scandir(FOLDER_PATH + "/images") as images, os.scandir(FOLDER_PATH + "/labels") as labels:
+    for frame, label in images, labels:
+
+        if frame.is_file():
+
+            #find roboflow bounding box coordinates
+            with open(label.path, 'r') as file:
+                for line in file:
+                    nums_in_line = line.strip().split()
+                    nums_in_line = [float(item) for item in nums_in_line]
+            x_min, y_min, x_max, y_max = rfboundingboxcalc(nums_in_line=nums_in_line)
+            
+            #get model results
+            img = cv.imread(frame.path)
+            results = model.predict(img, confidence=0.5, overlap=0.3).json()
+            for object_id, box in enumerate(results['predictions']):
+                class_name = box['class']
+                conf = box['confidence']
+
+                x, y, width, height = box['x'], box['y'], box['width'], box['height']
+                x1 = int(x - width / 2)
+                y1 = int(y - height / 2)
+                x2 = int(x + width / 2)
+                y2 = int(y + height / 2)    
+                print(x1, y1, x2, y2)
+                # what if multiple detections happen in 1 frame?
+                """
+                TO-DO
+                    data collection code done
+                    autoencoders
+                    circuits hw?
+                    k-fold start training
+                """
+
+            litter_detected = iou([x_min, y_min, x_max, y_max], [x1, y1, x2, y2], factor=0.5)
+
+
 #results = model.predict(img, confidence=40, overlap=30)
 
 
@@ -68,7 +128,7 @@ with open("data_analysis/annotated_frames/test/labels/013_MOV-0008_jpg.rf.a241f2
         nums_in_line = line.strip().split()
         nums_in_line = [float(item) for item in nums_in_line]
 
-W, H = 1920, 1080
+# hard-coded width/size of the annotated frames
 __, x_center_norm, y_center_norm, width_norm, height_norm = nums_in_line
 x_center_pixel = x_center_norm * W
 y_center_pixel = y_center_norm * H
@@ -83,3 +143,5 @@ y_max = y_center_pixel + height_pixel / 2
 
 print(x_min, y_min, x_max, y_max)
 #x1, y1, x2, y2 = points to compare to
+
+cv.imwrite("")

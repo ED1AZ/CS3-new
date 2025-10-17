@@ -1,6 +1,6 @@
 import cv2 as cv
 
-def iou(boxA, boxB):
+def iou(boxA, boxB, factor=0.7):
     # format [x1, y1, x2, y2]
 
     xA = max(boxA[0], boxB[0])
@@ -19,7 +19,7 @@ def iou(boxA, boxB):
     if unionArea == 0:
         return False
 
-    if interArea / unionArea > 0.2:
+    if interArea / unionArea > factor:
         return True
     else:
         return False
