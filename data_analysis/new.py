@@ -1,22 +1,58 @@
 import roboflow as roboflow
 import supervision as sv
-import inference
 import cv2 as cv
-import onnxruntime as ort
-print(ort.get_available_providers())
-api_key = "biVnTCggzj3GiRiSl5YD" 
-#rf = roboflow.Roboflow(api_key=api_key)
-#model = rf.workspace("ed1az").project("current-dataset-czyp8").version(2).model
+import os 
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path="keys.env")
+api_key = os.getenv("ED1AZ_API_KEY")
+rf = roboflow.Roboflow(api_key=api_key)
+model = rf.workspace("ed1az").project("current-dataset-czyp8").version(2).model
 
 img = cv.imread("data_analysis/annotated_frames/test/images/013_MOV-0008_jpg.rf.a241f21bedcfed362b3f6626471318dc.jpg")
 #results = model.predict(img, confidence=40, overlap=30)
 
-model = inference.get_model(model_id="current-dataset-czyp8/2", api_key=api_key)
 
-results = model.infer(img, confidence=0.5)[0]
+#model = inference.get_model(model_id="current-dataset-czyp8/2", api_key=api_key)
+"""
+# finds bounding box of model prediction
+results = model.predict(img, confidence=0.5, overlap=0.3).json()
+for object_id, box in enumerate(results['predictions']):
+    class_name = box['class']
+    conf = box['confidence']
+
+    x, y, width, height = box['x'], box['y'], box['width'], box['height']
+    x1 = int(x - width / 2)
+    y1 = int(y - height / 2)
+    x2 = int(x + width / 2)
+    y2 = int(y + height / 2)    
+    print(x1, y1, x2, y2)
 
 detections = sv.Detections.from_inference(results)
 bounding_box_annotator = sv.BoxAnnotator()
 label_annotator = sv.LabelAnnotator()
-annotated_image = bounding_box_annotator.annotate(scene=img.copy(), detections=detections)
-cv.imshow("annotated_image", annotated_image)
+annotated_image = bounding_box_annotator.annotate(scene=img, detections=detections)
+cv.imwrite("annotated.jpg", annotated_image)
+"""
+# collect bounding box from correlating frame
+
+with open("data_analysis/annotated_frames/test/labels/013_MOV-0008_jpg.rf.a241f21bedcfed362b3f6626471318dc.txt", 'r') as file:
+    for line in file:
+        nums_in_line = line.strip().split()
+        nums_in_line = [float(item) for item in nums_in_line]
+
+W, H = 1920, 1080
+__, x_center_norm, y_center_norm, width_norm, height_norm = nums_in_line
+x_center_pixel = x_center_norm * W
+y_center_pixel = y_center_norm * H
+width_pixel = width_norm * W
+height_pixel = height_norm * H
+ 
+#top left corner
+x_min = x_center_pixel - width_pixel / 2
+y_min = y_center_pixel - height_pixel / 2
+x_max = x_center_pixel + width_pixel / 2
+y_max = y_center_pixel + height_pixel / 2
+
+print(x_min, y_min, x_max, y_max)
+#x1, y1, x2, y2 = points to compare to
