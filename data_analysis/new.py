@@ -3,6 +3,33 @@ import supervision as sv
 import cv2 as cv
 import os 
 from dotenv import load_dotenv
+import pandas as pd
+
+csv_file = "data_analysis/litternet.csv" # csv path
+
+def update_csv(row_number, update_dict):
+
+    # csv path
+    df = pd.read_csv(csv_file)
+    if row_number < 0 or row_number >= len(df):
+        raise IndexError(f"{row_number} out of range")
+
+    # update w for loop through dict
+    for col, val in update_dict.items():
+        if col in df.columns:
+            df.at[row_number, col] = val
+        else:
+            print(f"{col} not found")
+
+    df.to_csv(csv_file, index=False)
+
+    print(f"Row {row_number} updated successfully in {csv_file}.")
+
+update_csv(1, {"VIDEO": 1, "MODEL_TYPE": "YOLO", 
+               "LitterNET": False, "frame_num": 
+               "roi0.png", "object_id": 69, 
+               "litter_present": False, 
+               "litter_detected": False, "conf": 3})
 
 load_dotenv(dotenv_path="keys.env")
 api_key = os.getenv("ED1AZ_API_KEY")
