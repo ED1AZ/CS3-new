@@ -33,7 +33,16 @@ def rfboundingboxcalc(nums_in_line):
 load_dotenv(dotenv_path="keys.env")
 api_key = os.getenv("ED1AZ_API_KEY")
 rf = roboflow.Roboflow(api_key=api_key)
-model = rf.workspace("ed1az").project("current-dataset-czyp8").version(2).model
+
+# change roboflow model here
+model = rf.workspace("ed1az").project("current-dataset-czyp8").version(1).model
+
+# change locally trained yolo model here
+"""
+from ultralytics import YOLO
+YOLO_V9S_PATH = 'runs/detect/train3/weights/best.pt'
+model = YOLO(YOLO_V9S_PATH)
+"""
 
 
 with os.scandir(FOLDER_PATH + "/images") as images, os.scandir(FOLDER_PATH + "/labels") as labels:
@@ -57,6 +66,10 @@ with os.scandir(FOLDER_PATH + "/images") as images, os.scandir(FOLDER_PATH + "/l
         # run model predictions on frame
         img = cv.imread(frame.path)
         results = model.predict(img, confidence=0.5, overlap=0.3).json()
+
+        #locally trained model version
+        #results = model(img)[0] 
+
         for box in results.get('predictions', []):
             x, y, w, h = box['x'], box['y'], box['width'], box['height']
             conf = box['confidence']
