@@ -18,7 +18,8 @@ frame_transform = T.Compose([
 ])
 
 mask_transform = T.Compose([
-    T.ToTensor(),  # converts to [0,1] float
+    T.Resize((256, 256), interpolation=T.InterpolationMode.NEAREST),
+    T.ToTensor(),  # gives float [0,1]
 ])
 
 
@@ -26,9 +27,22 @@ class DynamicMotionSet(Dataset):
     def __init__(self, path, transform=None, mask_transform=None):
         self.frame_dir = os.path.join(path, "frames")
         self.mask_dir = os.path.join(path, "masks")
-        self.transform = transform          # for frames
-        self.mask_transform = mask_transform  # optional, for masks
+        self.transform = transform
+        self.mask_transform = mask_transform
+
+        # Get all frame names
         self.samples = sorted(os.listdir(self.frame_dir))
+
+        # Keep only frames that have a corresponding mask
+        valid_samples = []
+        for f in self.samples:
+            mask_name = f.replace("frame", "mask")
+            if os.path.exists(os.path.join(self.mask_dir, mask_name)):
+                valid_samples.append(f)
+
+        self.samples = valid_samples
+        if len(self.samples) == 0:
+            raise RuntimeError(f"No matching frame/mask pairs found in {path}")
 
     def __len__(self):
         return len(self.samples)
@@ -36,22 +50,24 @@ class DynamicMotionSet(Dataset):
     def __getitem__(self, idx):
         fname = self.samples[idx]
 
-        # Load frame
+        # --- Load frame ---
         frame = Image.open(os.path.join(self.frame_dir, fname)).convert("RGB")
 
-        # Load mask and convert to numeric labels (0,1)
-        mask = Image.open(os.path.join(self.mask_dir, fname)).convert("L")
-        mask = np.array(mask)
-        mask = (mask > 0).astype(np.uint8)  # assuming nonzero = motion
+        # --- Load matching mask ---
+        mask_name = fname.replace("frame", "mask")
+        mask_path = os.path.join(self.mask_dir, mask_name)
+        mask = Image.open(mask_path).convert("L")  # still PIL
 
+        # --- Apply transforms ---
         if self.transform is not None:
             frame = self.transform(frame)
-
         if self.mask_transform is not None:
-            mask = self.mask_transform(mask)
+            mask = self.mask_transform(mask)  # expects PIL image
         else:
-            # convert to tensor
-            mask = torch.from_numpy(mask).long()
+            mask = T.ToTensor()(mask)
+
+        # --- Convert to binary (0/1) ---
+        mask = (mask > 0.5).float().squeeze(0)  # [H, W] float
 
         return frame, mask
 
@@ -109,25 +125,26 @@ class UNet(nn.Module):
         out = self.conv_last(x)
         return out
 
-dataset = DynamicMotionSet("testing/dataset", transform=frame_transform)
+dataset = DynamicMotionSet("testing/dataset/train", transform=frame_transform, mask_transform=mask_transform)
 dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-model = UNet(...)  
-criterion = torch.nn.CrossEntropyLoss()  # if multi-class, or nn.BCEWithLogitsLoss() for binary
+model = UNet(n_channels=3, n_classes=1).to(device)
+criterion = torch.nn.BCEWithLogitsLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 num_epochs = 20
 
 for epoch in range(num_epochs):
     model.train()
     running_loss = 0.0
+
     for frames, masks in dataloader:
         frames = frames.to(device)
-        masks = masks.to(device)
+        masks = masks.to(device).float()  # BCE expects float (0.0 or 1.0)
 
         optimizer.zero_grad()
-        outputs = model(frames)
+        outputs = model(frames)  # [B, 1, H, W]
         outputs = outputs.squeeze(1)  # [B, H, W]
         loss = criterion(outputs, masks)
         loss.backward()
