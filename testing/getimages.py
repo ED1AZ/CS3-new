@@ -1,13 +1,17 @@
 import cv2 as cv
 import os
-
+"""
+manitou-a = 2
+trout-a = 3
+trout-c = 4
+"""
 bgsub = cv.createBackgroundSubtractorMOG2(detectShadows=False)
 round = 0
 num = 0
 
 # Cycle through background motion videos in folder
 for video in os.listdir("testing/videos"):
-    path = "testing/videos/video" + str(num) + ".mp4"
+    path = "testing/videos/video" + str(round) + ".mp4"
     cam = cv.VideoCapture(path)
 
     while cam.isOpened():
@@ -27,11 +31,13 @@ for video in os.listdir("testing/videos"):
             break
         
         
-        cv.imwrite("testing/dataset/train/masks/mask" + str(num) + ".jpg", mask)
-        cv.imwrite("testing/dataset/train/frames/frame"+ str(num) +".jpg", frame)
+        cv.imwrite("testing/dataset/train/masks/" + str(round) + "mask" + str(num) + ".jpg", mask)
+        cv.imwrite("testing/dataset/train/frames/" + str(round) + "frame"+ str(num) +".jpg", frame)
         num += 1
+    round += 1
 
     cam.release()
-    cv.destroyAllWindows()
+
+cv.destroyAllWindows()
 
 #after getting all masks, shuffle them between test, train, & val folders
