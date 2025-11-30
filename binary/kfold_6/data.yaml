@@ -1,0 +1,4 @@
+train: kfold_6/train/images
+val: kfold_6/valid/images
+nc: 1
+names: ['Trash']
