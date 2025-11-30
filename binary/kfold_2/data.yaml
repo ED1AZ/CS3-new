@@ -1,4 +1,4 @@
-train: kfold_2/train/images
-val: kfold_2/valid/images
+train: images/train
+val: images/val
 nc: 1
 names: ['Trash']
