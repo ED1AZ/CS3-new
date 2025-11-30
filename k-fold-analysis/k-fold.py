@@ -41,8 +41,10 @@ for train_index, val_index in kf.split(images):
     # write data.yaml for binary classification
     with open(f"{fold_path}/data.yaml", "w") as f:
         f.write(
-        f"train: {fold_path}/train/images\n"
-        f"val: {fold_path}/valid/images\n"
+        #f"train: {fold_path}/train/images\n"
+        #f"val: {fold_path}/valid/images\n"
+        f"train: images/train\n"
+        f"val: images/val\n"
         "nc: 1\n"
         "names: ['Trash']\n"
         )
