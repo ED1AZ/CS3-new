@@ -221,3 +221,7 @@ keys.env
 output/
 Litter-Detection-6/
 testing/dataset/
+binary/
+material/
+litter/
+results/
